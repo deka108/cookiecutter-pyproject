@@ -32,8 +32,7 @@ export
 .env: ##@Miscellaneous Generate .env file if it doesn't exist
 	@cp .env-template .env
 	@sed -ie "s@PROJECT_HOME.*@PROJECT_HOME=${CURRENT_DIR}@" .env
-	@sed -ie "s@APP_CONFIG=.*@APP_CONFIG=${CURRENT_DIR}/config/app/${PROJECT_DIR}_config.yaml@" .env
-	@sed -ie "s@PROJECT_HOME=.*@GCS_BUCKET=${GCS_BUCKET}@" .env
+	@sed -ie "s@PROJECT_CONFIG=.*@PROJECT_CONFIG=${CURRENT_DIR}/config/config.yaml@" .env
 	@rm .enve
 
 makefile: Makefile.common Makefile.custom ##@Project Generate Makefile from common and custom makefiles
