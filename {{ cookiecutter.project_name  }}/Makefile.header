@@ -1,0 +1,12 @@
+# Makefile.header
+# You can add/modify the variables here
+
+# START OF HEADER MAKEFILE
+
+PY_VERSION = 3.7.2
+IS_ACTIVE = $(shell python -c "import sys; print((hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)))")
+PROJECT_DIR = {{ cookiecutter.project_name }}
+APP_NAME = {{ cookiecutter.app_name }}
+PACKAGE_NAME = {{ cookiecutter.pkg_name }}
+
+# END OF MAKEFILE HEADER

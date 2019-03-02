@@ -26,8 +26,8 @@ HELP_FUNC = \
 		print "\n"; \
 	} \
 
-include .env
-export
+help: .env    ##@Miscellaneous Show this help
+	@perl -e '$(HELP_FUNC)' $(MAKEFILE_LIST)
 
 .env: ##@Miscellaneous Generate .env file if it doesn't exist
 	@cp .env-template .env
@@ -35,10 +35,13 @@ export
 	@sed -ie "s@PROJECT_CONFIG=.*@PROJECT_CONFIG=${CURRENT_DIR}/config/config.yaml@" .env
 	@rm .enve
 
+include .env
+export
+
 makefile: Makefile.common Makefile.custom ##@Project Generate Makefile from common and custom makefiles
 	@echo "Merging common and custom makefile into Makefiles..."
 	@printf "\n"
-	@(echo "# DO NOT CHANGE CONTENT IT'S PRE-GENERATED-- Combined Makefile.common and Makefile.custom" && cat Makefile.common Makefile.custom) > Makefile
+	@(echo "# DO NOT CHANGE CONTENT IT'S PRE-GENERATED-- Combined Makefiles" && cat Makefile.header Makefile.common Makefile.custom) > Makefile
 
 
 # Setup Pipenv: Start
@@ -115,9 +118,9 @@ help-pipenv: ##@Python Common pipenv commands
 # Setup Pipenv: End
 
 # Development Commands: Start
-docker-image: requirements.txt
+docker-image: requirements.txt ##@Development Build docker image for local development
 	docker build -f Dockerfile -t ${APP_NAME}:local .
 
-docker-image-test: requirements.txt
+docker-image-test: requirements.txt ##@Development Build docker image for testing
 	docker build -f Dockerfile.test -t ${APP_NAME}:test .
 # Development Commands: End
