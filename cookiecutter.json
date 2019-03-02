@@ -1,0 +1,6 @@
+{
+  "project_name": "my-project",
+  "pkg_name": "{{ cookiecutter.project_name|replace('-', '_') }}",
+  "cls_name": "{{ cookiecutter.project_name|title|replace('-', '')|replace('_','') }}",
+  "app_name": "{{ cookiecutter.project_name|replace('_', '-') }}"
+}

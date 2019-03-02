@@ -1,0 +1,124 @@
+# Makefile.common
+# You can add/modify the default target behaviour in here, but it is NOT RECOMMENDED as this file might get override.
+# Please add new/customize targets or variables in Makefile.custom or Makefile.header instead.
+
+# START OF COMMON MAKEFILE
+
+CURRENT_DIR := $(shell pwd)
+
+red=$(shell tput setaf 1)
+green=$(shell tput setaf 2)
+reset=$(shell tput sgr0)
+bold=$(shell tput bold)
+
+HELP_FUNC = \
+	%help; \
+	while(<>) { \
+		if(/^([a-z0-9_-]+):.*\#\#(?:@(\w+))?\s(.*)$$/) { \
+			push(@{$$help{$$2}}, [$$1, $$3]); \
+		} \
+	}; \
+	print "usage: make [target]\n\n"; \
+	for ( sort keys %help ) { \
+		print "$$_:\n"; \
+		@sorted_targets = sort { lc($$a->[0]) cmp lc($$b->[0]) } @{$$help{$$_}}; \
+		printf("  %-25s %s\n", $$_->[0], $$_->[1]) for @sorted_targets; \
+		print "\n"; \
+	} \
+
+include .env
+export
+
+.env: ##@Miscellaneous Generate .env file if it doesn't exist
+	@cp .env-template .env
+	@sed -ie "s@PROJECT_HOME.*@PROJECT_HOME=${CURRENT_DIR}@" .env
+	@sed -ie "s@APP_CONFIG=.*@APP_CONFIG=${CURRENT_DIR}/config/app/${PROJECT_DIR}_config.yaml@" .env
+	@sed -ie "s@PROJECT_HOME=.*@GCS_BUCKET=${GCS_BUCKET}@" .env
+	@rm .enve
+
+makefile: Makefile.common Makefile.custom ##@Project Generate Makefile from common and custom makefiles
+	@echo "Merging common and custom makefile into Makefiles..."
+	@printf "\n"
+	@(echo "# DO NOT CHANGE CONTENT IT'S PRE-GENERATED-- Combined Makefile.common and Makefile.custom" && cat Makefile.common Makefile.custom) > Makefile
+
+
+# Setup Pipenv: Start
+.PHONY: setup-project
+ifeq ($(IS_ACTIVE), True)
+setup-project: init ##@Project Setup pipenv environment and activates virtual environment for current project
+	@printf "\n"
+	@echo "A virtualenv is already activated."
+	@echo "Please exit the current virtualenv first by running \`$(red)$(bold)exit$(reset)\` in your terminal, \
+	\`$(green)$(bold)cd$(reset)\` to the correct project and run \`$(green)$(bold)make setup-project$(reset)\` again."
+	@printf "\n"
+	@echo "If you wish to $(bold)reinstall$(reset) your packages, please run \`$(green)$(bold)make reinstall-packages$(reset)\`."
+	@echo "$(bold)$(red)DO NOT USE PIP to install/uninstall packages$(reset), please use \`$(green)$(bold)pipenv$(reset)\` instead. \
+	Run \`$(bold)$(green)make help-pipenv$(reset)\` or \`$(bold)$(green)pipenv --help$(reset)\` to find out more."
+else
+setup-project: init
+	@printf "\n"
+	@echo "$(green)Activating$(reset) the virtualenv of the project..."
+	@printf "\n"
+	@echo "$(bold)$(red)DO NOT USE PIP to install/uninstall packages$(reset). Please use \`$(green)$(bold)pipenv$(reset)\` instead. \
+	Run \`$(bold)pipenv --help$(reset)\` or \`$(bold)make help-pipenv$(reset)\` to find out more."
+	@echo "To $(red)exit$(reset) a virtualenv run \`$(red)$(bold)exit$(reset)\` in your terminal."
+	@pipenv shell
+endif
+
+.PHONY: init
+init: .env #Python Setup pipenv environment for current project
+	@echo "$(green)Setting up project started...$(reset)"
+	@printf "\n"
+	@if ! pipenv --venv  > /dev/null 2>&1; then \
+        echo "Virtualenv for this project doesn't exist. Creating virtualenv..."; \
+        pipenv install --dev --python ${PY_VERSION}; \
+        pipenv install -e .; \
+    elif [ ! -f Pipfile.lock ]; then \
+		pipenv install --dev; \
+		pipenv install -e .; \
+	fi
+
+PIP_REQS = Pipfile
+requirements.txt: $(PIP_REQS) ##@Python Generate requirements files
+	@echo "Generating requirements.txt for ${PROJECT_DIR}"
+	@pipenv lock -r > requirements.txt
+	@pipenv lock -r --dev  > requirements.dev.txt
+	@./scripts/generate_requirements.py \
+		--path-to-requirements requirements.txt \
+		--path-to-dev-requirements requirements.dev.txt
+	@rm requirements.dev.txt
+
+reinstall-packages: ##@Python Re-install local packages (run this after local package is changed)
+	@echo "Reinstall packages"
+	@pipenv install --dev
+	@pipenv install -e .
+	@pipenv lock --clear
+
+reset-pipenv: ##Python
+	@rm Pipfile.lock &> /dev/null || true
+	@pipenv lock --clear && pipenv clean
+	@rm -rf $(HOME)/Library/Caches/pipenv
+	@rm -rf $(HOME)/.cache/pipenv
+	@rm -rf $(HOME)/Library/Caches/pip
+	@rm -rf $(HOME)/.cache/pip
+
+help-pipenv: ##@Python Common pipenv commands
+	@echo "Usage: pipenv [cmd] [args...]. Run \`exit\` if you want to exit from the virtualenv."
+	@echo
+	@echo "--help			Display full pipenv commands with help"
+	@echo "install [package...]	Install pip package(s)"
+	@echo "uninstall [package...]	Uninstall pip package(s)"
+	@echo "update [package...]	Update specific pip package(s)"
+	@echo "update			Update all pip packages"
+	@echo "--rm			Remove a virtualenv"
+	@echo "clean			Uninstall packages not in Pipfile"
+
+# Setup Pipenv: End
+
+# Development Commands: Start
+docker-image: requirements.txt
+	docker build -f Dockerfile -t ${APP_NAME}:local .
+
+docker-image-test: requirements.txt
+	docker build -f Dockerfile.test -t ${APP_NAME}:test .
+# Development Commands: End

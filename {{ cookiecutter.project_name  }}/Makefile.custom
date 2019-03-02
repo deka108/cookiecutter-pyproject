@@ -1,0 +1,6 @@
+# Makefile.custom
+# Add/modify your custom targets here. This file will get combined with Makefile.header & Makefile.common to generate Makefile.
+
+# START OF CUSTOM MAKEFILE
+
+# END OF CUSTOM MAKEFILE
